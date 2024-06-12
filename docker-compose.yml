@@ -1,0 +1,77 @@
+version: '3.8'
+
+volumes:
+    grafana_data: {}
+    prometheus_data: {}
+
+networks:
+    monitoring:
+        driver: bridge
+    local_net:
+        driver: bridge
+
+services:
+    nginx-proxy:
+      container_name: nginx-proxy
+      image: jwilder/nginx-proxy
+      ports:
+        - "443:443"
+        - "80:80"
+      volumes:
+        - /var/run/docker.sock:/tmp/docker.sock:ro
+      environment:
+        - DEFAULT_HOST=luxoft.com
+
+    whoami:
+      image: jwilder/whoami
+      environment:
+        - VIRTUAL_HOST=whoami.com
+
+    node-exporter:
+        container_name: node-exporter
+        image: prom/node-exporter:latest
+        restart: unless-stopped
+        volumes:
+            - /proc:/host/proc:ro
+            - /sys:/host/sys:ro
+            - /:/rootfs:ro
+        command:
+            - '--path.procfs=/host/proc'
+            - '--path.rootfs=/rootfs'
+            - '--path.sysfs=/host/sys'
+            - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+        ports:
+            - 9100:9100
+        networks:
+            - monitoring
+
+    grafana:
+        container_name: grafana
+        image: grafana/grafana-enterprise
+        restart: unless-stopped
+        volumes:
+            - grafana_data:/var/lib/grafana
+        ports:
+            - 3000:3000
+
+    prometheus:
+        container_name: prometheus
+        image: prom/prometheus:latest
+        restart: unless-stopped
+        volumes:
+            - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+            - ./config/prometheus/users.yml:/etc/prometheus/users.yml
+            - prometheus_data:/prometheus
+        command:
+            - '--config.file=/etc/prometheus/prometheus.yml'
+            - '--storage.tsdb.path=/prometheus'
+            - '--web.console.libraries=/etc/prometheus/console_libraries'
+            - '--web.console.templates=/etc/prometheus/consoles'
+            - '--web.enable-lifecycle'
+            - '--web.enable-admin-api'
+        ports:
+            - 9090:9090
+        networks:
+            - local_net
+            - monitoring
+        user: "${UID}:${GID}"
