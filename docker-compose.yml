@@ -1,31 +1,54 @@
 version: '3.8'
 
 volumes:
+    acme:
+    certs:
+    html:
     grafana_data: {}
     prometheus_data: {}
 
 networks:
-    monitoring:
-        driver: bridge
-    local_net:
+    host_network:
+        name: proxy-network
         driver: bridge
 
 services:
     nginx-proxy:
-      container_name: nginx-proxy
-      image: jwilder/nginx-proxy
-      ports:
-        - "443:443"
-        - "80:80"
-      volumes:
-        - /var/run/docker.sock:/tmp/docker.sock:ro
-      environment:
-        - DEFAULT_HOST=luxoft.com
+        container_name: nginx-proxy
+        image: jwilder/nginx-proxy
+        restart: unless-stopped
+        networks:
+            - default
+            - host_network
+        ports:
+            - "443:443"
+            - "80:80"
+        volumes:
+            - html:/usr/share/nginx/html
+            - certs:/etc/nginx/certs:ro
+            - /var/run/docker.sock:/tmp/docker.sock:ro
+        environment:
+            - DEFAULT_HOST=luxoft.local
+
+    acme-companion:
+        image: nginxproxy/acme-companion
+        container_name: nginx-proxy-acme
+        restart: unless-stopped
+        environment:
+            - DEFAULT_EMAIL=${DEFAULT_EMAIL:-admin@luxoft.local}
+        volumes_from:
+            - nginx-proxy
+        volumes:
+            - certs:/etc/nginx/certs:rw
+            - acme:/etc/acme.sh
+            - /var/run/docker.sock:/var/run/docker.sock:ro
 
     whoami:
-      image: jwilder/whoami
-      environment:
-        - VIRTUAL_HOST=whoami.com
+        container_name: whoami
+        image: jwilder/whoami
+        restart: unless-stopped
+        environment:
+            - VIRTUAL_HOST=whoami.local
 
     node-exporter:
         container_name: node-exporter
@@ -42,8 +65,6 @@ services:
             - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
         ports:
             - 9100:9100
-        networks:
-            - monitoring
 
     grafana:
         container_name: grafana
@@ -71,7 +92,3 @@ services:
             - '--web.enable-admin-api'
         ports:
             - 9090:9090
-        networks:
-            - local_net
-            - monitoring
-        user: "${UID}:${GID}"
