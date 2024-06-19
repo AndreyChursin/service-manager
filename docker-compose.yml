@@ -59,6 +59,8 @@ services:
         restart: unless-stopped
         environment:
             - VIRTUAL_HOST=${NODE_VIRTUAL_HOST:-grafana.local}
+            - VIRTUAL_PORT=${NODE_PORT:-3000}
+            - HTTPS_METHOD=${NODE_HTTPS_METHOD:-noredirect}
         volumes:
             - /proc:/host/proc:ro
             - /sys:/host/sys:ro
@@ -77,6 +79,8 @@ services:
         restart: unless-stopped
         environment:
             - VIRTUAL_HOST=${GRAFANA_VIRTUAL_HOST:-grafana.local}
+            - VIRTUAL_PORT=${GRAFANA_PORT:-3000}
+            - HTTPS_METHOD=${GRAFANA_HTTPS_METHOD:-noredirect}
         volumes:
             - grafana:/var/lib/grafana
         ports:
