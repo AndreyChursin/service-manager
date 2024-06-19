@@ -29,6 +29,8 @@ services:
             - /var/run/docker.sock:/tmp/docker.sock:ro
         environment:
             - DEFAULT_HOST=${DEFAULT_HOST:-luxoft.com}
+        labels:
+            com.github.nginx-proxy.nginx: ""
 
     acme-companion:
         image: nginxproxy/acme-companion
@@ -36,6 +38,7 @@ services:
         restart: unless-stopped
         environment:
             - DEFAULT_EMAIL=${DEFAULT_EMAIL:-admin@luxoft.local}
+            - NGINX_PROXY_CONTAINER=nginx-proxy
         volumes_from:
             - nginx-proxy
         volumes:
@@ -54,6 +57,8 @@ services:
         container_name: node-exporter
         image: prom/node-exporter:latest
         restart: unless-stopped
+        environment:
+            - VIRTUAL_HOST=${NODE_VIRTUAL_HOST:-grafana.local}
         volumes:
             - /proc:/host/proc:ro
             - /sys:/host/sys:ro
@@ -70,6 +75,8 @@ services:
         container_name: grafana
         image: grafana/grafana-enterprise
         restart: unless-stopped
+        environment:
+            - VIRTUAL_HOST=${GRAFANA_VIRTUAL_HOST:-grafana.local}
         volumes:
             - grafana:/var/lib/grafana
         ports:
@@ -80,6 +87,10 @@ services:
         image: prom/prometheus:latest
         restart: unless-stopped
         mem_limit: 6000m
+        environment:
+            - VIRTUAL_HOST=${PROMETHEUS_VIRTUAL_HOST:-prometheus.local}
+            - VIRTUAL_PORT=${PROMETHEUS_PORT:-9090}
+            - HTTPS_METHOD=${PROMETHEUS_HTTPS_METHOD:-noredirect}
         volumes:
             - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
             - ./config/prometheus/users.yml:/etc/prometheus/users.yml
