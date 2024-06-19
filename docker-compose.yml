@@ -4,8 +4,8 @@ volumes:
     acme:
     certs:
     html:
-    grafana_data: {}
-    prometheus_data: {}
+    grafana:
+    prometheus:
 
 networks:
     host_network:
@@ -71,7 +71,7 @@ services:
         image: grafana/grafana-enterprise
         restart: unless-stopped
         volumes:
-            - grafana_data:/var/lib/grafana
+            - grafana:/var/lib/grafana
         ports:
             - 3000:3000
 
@@ -79,10 +79,11 @@ services:
         container_name: prometheus
         image: prom/prometheus:latest
         restart: unless-stopped
+        mem_limit: 6000m
         volumes:
             - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
             - ./config/prometheus/users.yml:/etc/prometheus/users.yml
-            - prometheus_data:/prometheus
+            - prometheus:/prometheus
         command:
             - '--config.file=/etc/prometheus/prometheus.yml'
             - '--storage.tsdb.path=/prometheus'
