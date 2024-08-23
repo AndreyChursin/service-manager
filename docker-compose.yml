@@ -25,7 +25,7 @@ services:
             - "80:80"
         volumes:
             - html:/usr/share/nginx/html
-            - certs:/etc/nginx/certs:ro
+            - ./config/nginx/certs/:/etc/nginx/certs:ro
             - /var/run/docker.sock:/tmp/docker.sock:ro
             - ./config/custom_proxy_settings.conf:/etc/nginx/conf.d/custom_proxy_settings.conf:ro
         environment:
