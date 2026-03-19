@@ -1,5 +1,3 @@
-version: '3.8'
-
 volumes:
     acme:
     certs:
@@ -17,6 +15,7 @@ services:
         container_name: nginx-proxy
         image: jwilder/nginx-proxy
         restart: unless-stopped
+        mem_limit: 1g
         networks:
             - default
             - host_network
@@ -29,7 +28,7 @@ services:
             - /var/run/docker.sock:/tmp/docker.sock:ro
             - ./config/custom_proxy_settings.conf:/etc/nginx/conf.d/custom_proxy_settings.conf:ro
         environment:
-            - DEFAULT_HOST=${DEFAULT_HOST:-luxoft.com}
+            - DEFAULT_HOST=${DEFAULT_HOST:-fit24.local}
         labels:
             com.github.nginx-proxy.nginx: ""
 
@@ -37,6 +36,7 @@ services:
         image: nginxproxy/acme-companion
         container_name: nginx-proxy-acme
         restart: unless-stopped
+        mem_limit: 1g
         environment:
             - DEFAULT_EMAIL=${DEFAULT_EMAIL:-admin@luxoft.local}
             - NGINX_PROXY_CONTAINER=nginx-proxy
@@ -51,6 +51,7 @@ services:
         container_name: whoami
         image: jwilder/whoami
         restart: unless-stopped
+        mem_limit: 512m
         environment:
             - VIRTUAL_HOST=whoami.local
 
@@ -58,6 +59,7 @@ services:
         container_name: node-exporter
         image: prom/node-exporter:latest
         restart: unless-stopped
+        mem_limit: 512m
         environment:
             - VIRTUAL_HOST=${NODE_VIRTUAL_HOST:-grafana.local}
             - VIRTUAL_PORT=${NODE_PORT:-3000}
@@ -78,6 +80,7 @@ services:
         container_name: grafana
         image: grafana/grafana-enterprise
         restart: unless-stopped
+        mem_limit: 1g
         environment:
             - VIRTUAL_HOST=${GRAFANA_VIRTUAL_HOST:-grafana.local}
             - VIRTUAL_PORT=${GRAFANA_PORT:-3000}
@@ -91,7 +94,7 @@ services:
         container_name: prometheus
         image: prom/prometheus:latest
         restart: unless-stopped
-        mem_limit: 6000m
+        mem_limit: 3g
         environment:
             - VIRTUAL_HOST=${PROMETHEUS_VIRTUAL_HOST:-prometheus.local}
             - VIRTUAL_PORT=${PROMETHEUS_PORT:-9090}
