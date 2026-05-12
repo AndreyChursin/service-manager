@@ -2,6 +2,7 @@ volumes:
     acme:
     certs:
     html:
+    vhost:
     grafana:
     prometheus:
 
@@ -25,6 +26,7 @@ services:
         volumes:
             - html:/usr/share/nginx/html
             - ./config/nginx/certs/:/etc/nginx/certs:ro
+            - vhost:/etc/nginx/vhost.d
             - /var/run/docker.sock:/tmp/docker.sock:ro
             - ./config/custom_proxy_settings.conf:/etc/nginx/conf.d/custom_proxy_settings.conf:ro
         environment:
@@ -38,13 +40,15 @@ services:
         restart: unless-stopped
         mem_limit: 1g
         environment:
-            - DEFAULT_EMAIL=${DEFAULT_EMAIL:-admin@luxoft.local}
+            - DEFAULT_EMAIL=${DEFAULT_EMAIL:-admin@whoami.local}
             - NGINX_PROXY_CONTAINER=nginx-proxy
         volumes_from:
             - nginx-proxy
         volumes:
             - certs:/etc/nginx/certs:rw
             - acme:/etc/acme.sh
+            - vhost:/etc/nginx/vhost.d
+            - html:/usr/share/nginx/html
             - /var/run/docker.sock:/var/run/docker.sock:ro
 
     whoami:
@@ -53,17 +57,29 @@ services:
         restart: unless-stopped
         mem_limit: 512m
         environment:
-            - VIRTUAL_HOST=whoami.local
+            - VIRTUAL_HOST=${WHOAMI_VIRTUAL_HOST:-whoami.local}
+            - LETSENCRYPT_HOST=${WHOAMI_LETSENCRYPT_HOST:-whoami.local}
+            - HTTPS_METHOD=${WHOAMI_HTTPS_METHOD:-noredirect}
 
     node-exporter:
         container_name: node-exporter
         image: prom/node-exporter:latest
         restart: unless-stopped
         mem_limit: 512m
+        networks:
+            - default
+            - host_network
         environment:
             - VIRTUAL_HOST=${NODE_VIRTUAL_HOST:-grafana.local}
             - VIRTUAL_PORT=${NODE_PORT:-3000}
+            - LETSENCRYPT_HOST=${NODE_LETSENCRYPT_HOST:-grafana.local}
             - HTTPS_METHOD=${NODE_HTTPS_METHOD:-noredirect}
+        labels:
+            prometheus.scrape: "true"
+            prometheus.job: "node"
+            prometheus.host: "${NODE_VIRTUAL_HOST:-node.local}"
+            prometheus.port: "9100"
+            prometheus.path: "/metrics"
         volumes:
             - /proc:/host/proc:ro
             - /sys:/host/sys:ro
@@ -84,6 +100,7 @@ services:
         environment:
             - VIRTUAL_HOST=${GRAFANA_VIRTUAL_HOST:-grafana.local}
             - VIRTUAL_PORT=${GRAFANA_PORT:-3000}
+            - LETSENCRYPT_HOST=${GRAFANA_LETSENCRYPT_HOST:-grafana.local}
             - HTTPS_METHOD=${GRAFANA_HTTPS_METHOD:-noredirect}
         volumes:
             - grafana:/var/lib/grafana
@@ -95,14 +112,20 @@ services:
         image: prom/prometheus:latest
         restart: unless-stopped
         mem_limit: 3g
+        user: root
+        networks:
+            - default
+            - host_network
         environment:
             - VIRTUAL_HOST=${PROMETHEUS_VIRTUAL_HOST:-prometheus.local}
             - VIRTUAL_PORT=${PROMETHEUS_PORT:-9090}
+            - LETSENCRYPT_HOST=${PROMETHEUS_LETSENCRYPT_HOST:-prometheus.local}
             - HTTPS_METHOD=${PROMETHEUS_HTTPS_METHOD:-noredirect}
         volumes:
             - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
             - ./config/prometheus/users.yml:/etc/prometheus/users.yml
             - prometheus:/prometheus
+            - /var/run/docker.sock:/var/run/docker.sock:ro
         command:
             - '--config.file=/etc/prometheus/prometheus.yml'
             - '--storage.tsdb.path=/prometheus'
